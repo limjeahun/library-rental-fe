@@ -21,7 +21,8 @@ export async function proxyToBackend(
     .map((segment) => segment.replace(/^\/+|\/+$/g, ""))
     .filter(Boolean)
     .join("/");
-  const targetUrl = new URL(`/${targetPath}${request.nextUrl.search}`, config.serviceUrl);
+  const trailingSlash = request.nextUrl.pathname.endsWith("/") ? "/" : "";
+  const targetUrl = new URL(`/${targetPath}${trailingSlash}${request.nextUrl.search}`, config.serviceUrl);
 
   const headers = copyProxyHeaders(request.headers);
   const canHaveBody = !["GET", "HEAD"].includes(request.method);
