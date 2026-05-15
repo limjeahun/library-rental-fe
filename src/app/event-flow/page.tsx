@@ -6,15 +6,58 @@ import { Panel } from "@shared/ui/panel";
 const timeline = [
   {
     title: "도서 대여",
-    steps: ["POST /api/rental-cards/rent", "ItemRented 발행", "book/member/bestbook consumer 처리", "rental_result 수신"],
+    steps: [
+      {
+        api: "POST /api/rental-cards/rent",
+        event: "ItemRented",
+        consumer: "rental-service producer",
+      },
+      { api: "-", event: "ItemRented", consumer: "book-service consumer" },
+      { api: "-", event: "ItemRented", consumer: "member-service, bestbook-service consumer" },
+      {
+        api: "GET /api/rental-cards/{memberId}",
+        event: "EventResult",
+        consumer: "rental-service consumer",
+      },
+    ],
   },
   {
     title: "도서 반납",
-    steps: ["POST /api/rental-cards/return", "ItemReturned 발행", "book/member consumer 처리", "rental_result 수신"],
+    steps: [
+      {
+        api: "POST /api/rental-cards/return",
+        event: "ItemReturned",
+        consumer: "rental-service producer",
+      },
+      { api: "-", event: "ItemReturned", consumer: "book-service consumer" },
+      { api: "-", event: "ItemReturned", consumer: "member-service consumer" },
+      {
+        api: "GET /api/rental-cards/{memberId}",
+        event: "EventResult",
+        consumer: "rental-service consumer",
+      },
+    ],
   },
   {
     title: "연체료 정산",
-    steps: ["POST /api/rental-cards/clear-overdue", "OverdueCleared 발행", "member consumer 처리", "rental_result 수신"],
+    steps: [
+      {
+        api: "POST /api/rental-cards/clear-overdue",
+        event: "OverdueCleared",
+        consumer: "rental-service producer",
+      },
+      { api: "-", event: "OverdueCleared", consumer: "member-service consumer" },
+      {
+        api: "GET /api/Member/{memberId}",
+        event: "PointUseCommand",
+        consumer: "member-service consumer",
+      },
+      {
+        api: "GET /api/rental-cards/{memberId}",
+        event: "EventResult",
+        consumer: "rental-service consumer",
+      },
+    ],
   },
 ];
 
@@ -24,10 +67,11 @@ export default function EventFlowPage() {
   return (
     <div className="grid gap-6">
       <section>
-        <h1 className="text-2xl font-semibold">Kafka Event Flow</h1>
+        <p className="text-sm font-medium text-slate-500">정적 참조</p>
+        <h1 className="mt-1 text-2xl font-semibold">Kafka Event Flow</h1>
         <p className="mt-2 text-sm text-slate-600">
-          프론트는 Kafka를 직접 구독하지 않습니다. 이 화면은 API 호출 후 기대되는 producer/consumer 흐름을
-          설명하고, 관련 조회 화면으로 검증하도록 돕습니다.
+          프론트는 Kafka를 직접 구독하지 않습니다. 이 화면은 API 호출 후 기대되는 producer/consumer
+          흐름을 설명하고, 관련 조회 화면으로 검증하도록 돕습니다.
         </p>
       </section>
 
@@ -69,11 +113,15 @@ export default function EventFlowPage() {
           <Panel key={flow.title} title={flow.title}>
             <ol className="grid gap-3">
               {flow.steps.map((step, index) => (
-                <li key={step} className="flex gap-3 text-sm">
+                <li key={`${flow.title}-${index}`} className="flex gap-3 text-sm">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
                     {index + 1}
                   </span>
-                  <span>{step}</span>
+                  <div>
+                    <div className="font-medium text-slate-950">{step.event}</div>
+                    <div className="mt-1 text-slate-600">{step.api}</div>
+                    <div className="mt-1 text-xs text-slate-500">{step.consumer}</div>
+                  </div>
                 </li>
               ))}
             </ol>

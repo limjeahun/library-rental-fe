@@ -1,5 +1,6 @@
 import type { BaseResponse, ErrorResponse } from "@domain/shared/types/api-response";
 import { ApiError, NetworkError } from "@shared/errors/api-error";
+import { useRecentCacheStore } from "@shared/recent-cache/recent-cache-store";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -8,6 +9,7 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const hasBody = options.body !== undefined;
+  const method = options.method?.toUpperCase() ?? "GET";
 
   if (hasBody && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
@@ -21,9 +23,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       body: hasBody ? JSON.stringify(options.body) : undefined,
     });
   } catch {
+    recordApiLog({ method, path, status: 0 });
     throw new NetworkError();
   }
 
+  recordApiLog({ method, path, status: response.status });
   const payload = await parseJsonSafely<BaseResponse<T> | ErrorResponse>(response);
 
   if (!response.ok) {
@@ -37,6 +41,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return (payload as BaseResponse<T>).data;
+}
+
+function recordApiLog(log: { method: string; path: string; status: number }) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  useRecentCacheStore.getState().addApiLog(log);
 }
 
 async function parseJsonSafely<T>(response: Response): Promise<T | undefined> {

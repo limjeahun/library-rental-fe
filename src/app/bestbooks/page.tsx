@@ -13,6 +13,7 @@ import { Panel } from "@shared/ui/panel";
 import { EmptyState, ErrorPanel } from "@shared/ui/state";
 import { useToast } from "@shared/ui/toast";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Search, TrendingUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -35,11 +36,12 @@ export default function BestBooksPage() {
   const { notifySuccess, notifyError } = useToast();
   const recordForm = useForm<RecordForm>({ resolver: zodResolver(recordSchema) });
   const lookupForm = useForm<LookupForm>({ resolver: zodResolver(lookupSchema) });
+  const rankedBooks = [...(bestBooks.data ?? [])].sort((a, b) => b.rentCount - a.rentCount);
 
   async function record(values: RecordForm) {
     try {
       await recordRent.mutateAsync({ ...values, itemNo: Number(values.itemNo) });
-      notifySuccess("수동 인기 도서 집계가 반영되었습니다.");
+      notifySuccess("집계가 반영되었습니다.");
       recordForm.reset();
     } catch (error) {
       if (!applyApiFieldErrors(error, recordForm.setError)) notifyError(getErrorMessage(error));
@@ -58,75 +60,86 @@ export default function BestBooksPage() {
   return (
     <div className="grid gap-6">
       <section>
-        <h1 className="text-2xl font-semibold">인기 도서</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          bestbook-service의 MongoDB read model을 조회합니다. 대여 이벤트로 rentCount가 증가합니다.
-        </p>
+        <p className="text-sm font-medium text-slate-500">인기 도서</p>
+        <h1 className="mt-1 text-2xl font-semibold">인기 도서 집계</h1>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-        <Panel title="수동 집계 테스트" description="POST /api/books">
-          <form className="grid gap-3" onSubmit={recordForm.handleSubmit(record)}>
-            <Field label="도서 번호" error={recordForm.formState.errors.itemNo?.message}>
-              <Input type="number" {...recordForm.register("itemNo")} />
-            </Field>
-            <Field label="도서 제목" error={recordForm.formState.errors.itemTitle?.message}>
-              <Input {...recordForm.register("itemTitle")} />
-            </Field>
-            <Button disabled={recordRent.isPending}>집계 반영</Button>
-          </form>
-        </Panel>
-
-        <Panel title="단건 조회" description="GET /api/books/{id}">
-          <form className="flex gap-2" onSubmit={lookupForm.handleSubmit(lookup)}>
-            <Field label="Read model ID" error={lookupForm.formState.errors.id?.message}>
-              <Input type="number" {...lookupForm.register("id")} />
-            </Field>
-            <Button className="mt-6" variant="secondary" disabled={findById.isPending}>
-              조회
-            </Button>
-          </form>
-          {findById.data ? (
-            <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm">
-              {findById.data.itemTitle} / rentCount {findById.data.rentCount}
-            </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Panel title="인기 도서 순위">
+          {bestBooks.isError ? <ErrorPanel message={getErrorMessage(bestBooks.error)} /> : null}
+          {bestBooks.isLoading ? (
+            <EmptyState message="인기 도서 목록을 불러오는 중입니다." />
           ) : null}
-        </Panel>
-      </div>
-
-      <Panel title="Best book read model" description="GET /api/books">
-        {bestBooks.isError ? <ErrorPanel message={getErrorMessage(bestBooks.error)} /> : null}
-        {bestBooks.isLoading ? <EmptyState message="인기 도서 목록을 불러오는 중입니다." /> : null}
-        {bestBooks.data && bestBooks.data.length === 0 ? (
-          <EmptyState message="아직 인기 도서 집계가 없습니다." />
-        ) : null}
-        {bestBooks.data && bestBooks.data.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="py-2">ID</th>
-                  <th>Item No</th>
-                  <th>Title</th>
-                  <th className="text-right">Rent Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...bestBooks.data]
-                  .sort((a, b) => b.rentCount - a.rentCount)
-                  .map((book) => (
+          {rankedBooks.length === 0 && !bestBooks.isLoading ? (
+            <EmptyState message="아직 대여 이벤트가 발생하지 않았습니다." />
+          ) : null}
+          {rankedBooks.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="border-b text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="py-2">순위</th>
+                    <th>도서번호</th>
+                    <th>도서제목</th>
+                    <th className="text-right">대여횟수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankedBooks.map((book, index) => (
                     <tr key={book.id} className="border-b border-slate-100">
-                      <td className="py-2">{book.id}</td>
+                      <td className="py-2 font-semibold">{index + 1}</td>
                       <td>{book.itemNo}</td>
                       <td>{book.itemTitle}</td>
                       <td className="text-right font-semibold">{book.rentCount}</td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </Panel>
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </Panel>
+
+        <aside className="grid content-start gap-4">
+          <Panel title="Read Model 조회">
+            <form className="grid gap-3" onSubmit={lookupForm.handleSubmit(lookup)}>
+              <Field label="ID" error={lookupForm.formState.errors.id?.message}>
+                <Input min={1} type="number" {...lookupForm.register("id")} />
+              </Field>
+              <Button variant="secondary" disabled={findById.isPending}>
+                <Search size={16} />
+                조회
+              </Button>
+            </form>
+            {findById.data ? (
+              <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div className="font-semibold text-slate-950">{findById.data.itemTitle}</div>
+                <div className="mt-1 text-slate-600">도서번호 {findById.data.itemNo}</div>
+                <div className="mt-2 text-lg font-semibold text-slate-950">
+                  {findById.data.rentCount.toLocaleString()}회
+                </div>
+              </div>
+            ) : null}
+          </Panel>
+
+          <Panel title="집계 보정">
+            <form className="grid gap-3" onSubmit={recordForm.handleSubmit(record)}>
+              <Field label="도서번호" error={recordForm.formState.errors.itemNo?.message}>
+                <Input min={1} type="number" {...recordForm.register("itemNo")} />
+              </Field>
+              <Field label="도서제목" error={recordForm.formState.errors.itemTitle?.message}>
+                <Input {...recordForm.register("itemTitle")} />
+              </Field>
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                수동 테스트용입니다. 실제 대여 없이 rentCount를 증가시킵니다.
+              </div>
+              <Button disabled={recordRent.isPending}>
+                <TrendingUp size={16} />
+                집계 반영
+              </Button>
+            </form>
+          </Panel>
+        </aside>
+      </div>
     </div>
   );
 }
