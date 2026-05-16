@@ -5,6 +5,7 @@ import {
 } from "@application/bestbook/use-cases/bestbook-use-cases";
 import {
   GetBookUseCase,
+  GetBooksUseCase,
   MakeBookAvailableUseCase,
   MakeBookUnavailableUseCase,
   RegisterBookUseCase,
@@ -43,6 +44,7 @@ export function createContainer() {
   return {
     book: {
       registerBook: new RegisterBookUseCase(bookRepository),
+      getBooks: new GetBooksUseCase(bookRepository),
       getBook: new GetBookUseCase(bookRepository),
       makeAvailable: new MakeBookAvailableUseCase(bookRepository),
       makeUnavailable: new MakeBookUnavailableUseCase(bookRepository),

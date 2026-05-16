@@ -115,7 +115,8 @@ export default function RentalPage() {
   const lookupUserId = useWatch({ control: memberLookupForm.control, name: "userId" });
   const rentItemId = useWatch({ control: rentForm.control, name: "itemId" });
   const selectedMember = members.find((member) => member.memberId === lookupUserId);
-  const selectedRecentBook = books.find((book) => book.no === Number(rentItemId));
+  const selectedRentBook = findConfirmedBook(rentItemId, selectedBook, books);
+  const rentBlockReason = getRentBlockReason(rentItemId, selectedRentBook);
 
   function fillMember(values: MemberForm) {
     memberLookupForm.setValue("userId", values.userId, { shouldValidate: true });
@@ -190,6 +191,13 @@ export default function RentalPage() {
   }
 
   async function submitRent(values: ItemForm) {
+    const blockReason = getRentBlockReason(values.itemId, findConfirmedBook(values.itemId, selectedBook, books));
+    if (blockReason) {
+      rentForm.setError("itemId", { message: blockReason });
+      notifyError(blockReason);
+      return;
+    }
+
     try {
       const result = await rentItem.mutateAsync({ ...values, itemId: Number(values.itemId) });
       setCard(result);
@@ -407,9 +415,13 @@ export default function RentalPage() {
                 {books.slice(0, 4).map((book) => (
                   <button
                     key={book.no}
-                    className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs hover:bg-slate-50 disabled:opacity-50"
+                    className={`rounded-full border px-3 py-1 text-xs transition ${recentBookChipTone(book.bookStatus)}`}
                     type="button"
-                    disabled={book.bookStatus !== "AVAILABLE"}
+                    title={
+                      book.bookStatus === "AVAILABLE"
+                        ? `${book.title} 선택`
+                        : `${book.title} 선택. 현재 ${book.bookStatus} 상태입니다.`
+                    }
                     onClick={() => selectBook(book)}
                   >
                     {book.title}
@@ -484,12 +496,12 @@ export default function RentalPage() {
                 <Field label="도서 제목" error={rentForm.formState.errors.itemTitle?.message}>
                   <Input {...rentForm.register("itemTitle")} />
                 </Field>
-                {selectedRecentBook?.bookStatus && selectedRecentBook.bookStatus !== "AVAILABLE" ? (
+                {rentBlockReason ? (
                   <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    선택한 도서는 현재 {selectedRecentBook.bookStatus} 상태입니다.
+                    {rentBlockReason}
                   </div>
                 ) : null}
-                <Button variant="success" disabled={rentItem.isPending}>
+                <Button variant="success" disabled={rentItem.isPending || Boolean(rentBlockReason)}>
                   <BookOpenCheck size={16} />
                   대여 접수
                 </Button>
@@ -547,6 +559,38 @@ export default function RentalPage() {
       </div>
     </div>
   );
+}
+
+function findConfirmedBook(itemId: string | undefined, selectedBook: Book | null, books: Book[]) {
+  const itemNo = Number(itemId);
+  if (!itemNo) {
+    return null;
+  }
+  if (selectedBook?.no === itemNo) {
+    return selectedBook;
+  }
+  return books.find((book) => book.no === itemNo) ?? null;
+}
+
+function getRentBlockReason(itemId: string | undefined, book: Book | null) {
+  if (!itemId) {
+    return null;
+  }
+  if (!book) {
+    return "대여 접수 전에 도서 확인으로 현재 상태를 확인하세요.";
+  }
+  if (book.bookStatus !== "AVAILABLE") {
+    return `선택한 도서는 현재 ${book.bookStatus} 상태입니다. 대여 가능한 도서만 접수할 수 있습니다.`;
+  }
+  return null;
+}
+
+function recentBookChipTone(status: string) {
+  if (status === "AVAILABLE") {
+    return "border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
+  }
+
+  return "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100";
 }
 
 function TargetCard({ children }: { children: React.ReactNode }) {

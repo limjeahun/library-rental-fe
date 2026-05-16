@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useBooks,
   useFindBook,
   useMakeBookAvailable,
   useMakeBookUnavailable,
@@ -12,15 +13,14 @@ import type { Book } from "@domain/book/entities/book";
 import { classifications } from "@domain/book/enums/classification";
 import { locations } from "@domain/book/enums/location";
 import { sources } from "@domain/book/enums/source";
-import { useRecentCacheStore } from "@shared/recent-cache/recent-cache-store";
 import { Button } from "@shared/ui/button";
 import { Field, Input, Select, Textarea } from "@shared/ui/form-controls";
 import { Panel } from "@shared/ui/panel";
-import { EmptyState } from "@shared/ui/state";
+import { EmptyState, ErrorPanel } from "@shared/ui/state";
 import { StatusBadge } from "@shared/ui/status-badge";
 import { useToast } from "@shared/ui/toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BookPlus, CheckCircle2, Search, Wrench } from "lucide-react";
+import { BookMarked, BookPlus, CheckCircle2, RefreshCw, Search, Wrench } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -60,14 +60,17 @@ const sourceLabels = {
 } satisfies Record<(typeof sources)[number], string>;
 
 export default function BooksPage() {
-  const books = useRecentCacheStore((store) => store.books);
-  const touchedAt = useRecentCacheStore((store) => store.bookTouchedAtByNo ?? {});
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const allBooks = useBooks();
   const registerBook = useRegisterBook();
   const findBook = useFindBook();
   const makeAvailable = useMakeBookAvailable();
   const makeUnavailable = useMakeBookUnavailable();
   const { notifySuccess, notifyError } = useToast();
+  const sortedBooks = [...(allBooks.data ?? [])].sort((a, b) => a.no - b.no);
+  const availableCount = sortedBooks.filter((book) => book.bookStatus === "AVAILABLE").length;
+  const enteredCount = sortedBooks.filter((book) => book.bookStatus === "ENTERED").length;
+  const unavailableCount = sortedBooks.filter((book) => book.bookStatus === "UNAVAILABLE").length;
 
   const bookForm = useForm<BookForm>({
     resolver: zodResolver(bookSchema),
@@ -127,9 +130,19 @@ export default function BooksPage() {
 
   return (
     <div className="grid gap-6">
-      <section>
-        <p className="text-sm font-medium text-slate-500">서가 관리</p>
-        <h1 className="mt-1 text-2xl font-semibold">도서 관리</h1>
+      <section className="rounded-md border border-emerald-100 bg-white px-5 py-4 shadow-sm shadow-stone-200/60">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-emerald-700">서가 관리</p>
+            <h1 className="mt-1 text-2xl font-semibold text-stone-950">도서 관리</h1>
+          </div>
+          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-4">
+            <CatalogStat label="전체" value={sortedBooks.length} />
+            <CatalogStat label="대여 가능" value={availableCount} />
+            <CatalogStat label="입고" value={enteredCount} />
+            <CatalogStat label="대여 불가" value={unavailableCount} />
+          </div>
+        </div>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -202,27 +215,34 @@ export default function BooksPage() {
             </form>
 
             {selectedBook ? (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-start justify-between gap-4">
+              <div className="rounded-md border border-stone-200 bg-lime-50/50 p-4">
+                <div className="grid gap-4 sm:grid-cols-[84px_1fr]">
+                  <BookCover book={selectedBook} />
                   <div>
-                    <div className="text-lg font-semibold text-slate-950">{selectedBook.title}</div>
-                    <div className="mt-1 text-sm text-slate-600">{selectedBook.author}</div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-lg font-semibold text-stone-950">
+                          {selectedBook.title}
+                        </div>
+                        <div className="mt-1 text-sm text-stone-600">{selectedBook.author}</div>
+                      </div>
+                      <StatusBadge value={selectedBook.bookStatus} />
+                    </div>
+                    <div className="mt-4 grid gap-2 text-sm">
+                      <InfoLine label="도서 번호" value={String(selectedBook.no)} />
+                      <InfoLine label="ISBN" value={selectedBook.isbn} />
+                      <InfoLine label="발행일" value={selectedBook.publicationDate} />
+                      <InfoLine label="입수 경로" value={sourceLabels[selectedBook.source]} />
+                      <InfoLine
+                        label="분류"
+                        value={classificationLabels[selectedBook.classification]}
+                      />
+                      <InfoLine label="소장 지점" value={locationLabels[selectedBook.location]} />
+                      <InfoLine label="설명" value={selectedBook.description} />
+                    </div>
                   </div>
-                  <StatusBadge value={selectedBook.bookStatus} />
                 </div>
-                <div className="mt-4 grid gap-2 text-sm">
-                  <InfoLine label="도서 번호" value={String(selectedBook.no)} />
-                  <InfoLine label="ISBN" value={selectedBook.isbn} />
-                  <InfoLine label="발행일" value={selectedBook.publicationDate} />
-                  <InfoLine label="입수 경로" value={sourceLabels[selectedBook.source]} />
-                  <InfoLine
-                    label="분류"
-                    value={classificationLabels[selectedBook.classification]}
-                  />
-                  <InfoLine label="소장 지점" value={locationLabels[selectedBook.location]} />
-                  <InfoLine label="설명" value={selectedBook.description} />
-                </div>
-                <div className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                   등록 직후 도서는 ENTERED 상태입니다. 대여하려면 AVAILABLE로 변경하세요.
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -252,48 +272,37 @@ export default function BooksPage() {
         </Panel>
       </div>
 
-      <Panel title="최근 서가">
-        {books.length === 0 ? (
-          <EmptyState message="아직 등록하거나 조회한 도서가 없습니다." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
-              <thead className="border-b text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="py-2">번호</th>
-                  <th>제목</th>
-                  <th>저자</th>
-                  <th>분류</th>
-                  <th>소장</th>
-                  <th>상태</th>
-                  <th className="text-right">조회 시각</th>
-                </tr>
-              </thead>
-              <tbody>
-                {books.map((book) => (
-                  <tr
-                    key={book.no}
-                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                    onClick={() => loadBook(book)}
-                  >
-                    <td className="py-2">{book.no}</td>
-                    <td>{book.title}</td>
-                    <td>{book.author}</td>
-                    <td>{classificationLabels[book.classification]}</td>
-                    <td>{locationLabels[book.location]}</td>
-                    <td>
-                      <StatusBadge value={book.bookStatus} />
-                    </td>
-                    <td className="text-right text-slate-500">
-                      {formatDateTime(touchedAt[book.no])}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <Panel title="전체 도서 목록">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-stone-600">
+            총 <span className="font-semibold text-stone-950">{sortedBooks.length}</span>권
           </div>
-        )}
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={allBooks.isFetching}
+            onClick={() => allBooks.refetch()}
+          >
+            <RefreshCw size={16} />
+            새로고침
+          </Button>
+        </div>
+        {allBooks.isError ? <ErrorPanel message={getErrorMessage(allBooks.error)} /> : null}
+        {allBooks.isLoading ? <EmptyState message="전체 도서 목록을 불러오는 중입니다." /> : null}
+        {sortedBooks.length === 0 && !allBooks.isLoading ? (
+          <EmptyState message="등록된 도서가 없습니다." />
+        ) : null}
+        {sortedBooks.length > 0 ? <BookCatalog books={sortedBooks} onSelect={loadBook} /> : null}
       </Panel>
+    </div>
+  );
+}
+
+function CatalogStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-stone-200 bg-lime-50 px-3 py-2">
+      <div className="text-xs font-medium text-stone-500">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-stone-950">{value.toLocaleString()}</div>
     </div>
   );
 }
@@ -301,20 +310,100 @@ export default function BooksPage() {
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <span className="shrink-0 text-slate-500">{label}</span>
-      <span className="text-right font-medium text-slate-950">{value}</span>
+      <span className="shrink-0 text-stone-500">{label}</span>
+      <span className="text-right font-medium text-stone-950">{value}</span>
     </div>
   );
 }
 
-function formatDateTime(value?: string) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+function BookCatalog({
+  books,
+  onSelect,
+}: {
+  books: Book[];
+  onSelect: (book: Book) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {books.map((book) => (
+        <button
+          key={book.no}
+          type="button"
+          className="grid min-h-[236px] grid-cols-[82px_1fr] gap-3 rounded-md border border-stone-200 bg-white p-3 text-left shadow-sm shadow-stone-200/50 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-300"
+          onClick={() => onSelect(book)}
+        >
+          <BookCover book={book} />
+          <span className="grid min-w-0 content-start gap-2">
+            <span className="flex items-start justify-between gap-2">
+              <span className="min-w-0">
+                <span className="block truncate text-base font-semibold text-stone-950" title={book.title}>
+                  {book.title}
+                </span>
+                <span className="mt-1 block truncate text-sm text-stone-600" title={book.author}>
+                  {book.author}
+                </span>
+              </span>
+              <StatusBadge value={book.bookStatus} />
+            </span>
+            <span className="grid gap-1 text-xs text-stone-600">
+              <MetaLine label="번호" value={String(book.no)} />
+              <MetaLine label="ISBN" value={book.isbn} />
+              <MetaLine label="발행일" value={book.publicationDate} />
+            </span>
+            <span className="flex flex-wrap gap-1.5">
+              <Chip>{sourceLabels[book.source]}</Chip>
+              <Chip>{classificationLabels[book.classification]}</Chip>
+              <Chip>{locationLabels[book.location]}</Chip>
+            </span>
+            <span className="line-clamp-3 text-xs leading-5 text-stone-500" title={book.description}>
+              {book.description}
+            </span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BookCover({ book }: { book: Book }) {
+  return (
+    <span
+      className={`flex aspect-[3/4] w-full flex-col justify-between rounded-md border p-2 shadow-inner ${coverTone(book.classification)}`}
+    >
+      <BookMarked size={18} />
+      <span>
+        <span className="block text-xs font-semibold opacity-70">#{book.no}</span>
+        <span className="mt-1 block text-lg font-semibold leading-tight">
+          {book.title.slice(0, 2)}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function MetaLine({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="flex justify-between gap-2">
+      <span className="shrink-0 text-stone-400">{label}</span>
+      <span className="truncate font-medium text-stone-700">{value}</span>
+    </span>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full border border-stone-200 bg-lime-50 px-2 py-0.5 text-xs font-medium text-stone-700">
+      {children}
+    </span>
+  );
+}
+
+function coverTone(classification: Book["classification"]) {
+  const tones = {
+    ARTS: "border-rose-200 bg-rose-100 text-rose-800",
+    COMPUTER: "border-sky-200 bg-sky-100 text-sky-800",
+    LITERATURE: "border-emerald-200 bg-emerald-100 text-emerald-800",
+  } satisfies Record<Book["classification"], string>;
+
+  return tones[classification];
 }

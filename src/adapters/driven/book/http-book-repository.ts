@@ -12,6 +12,10 @@ export class HttpBookRepository implements BookRepositoryPort {
     return toBook(await apiRequest<BookDto>("/api/book", { method: "POST", body: command }));
   }
 
+  async findAll(): Promise<Book[]> {
+    return (await apiRequest<BookDto[]>("/api/book")).map(toBook);
+  }
+
   async findByNo(no: number): Promise<Book> {
     return toBook(await apiRequest<BookDto>(`/api/book/${no}`));
   }

@@ -1,6 +1,6 @@
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+    <div className="rounded-md border border-dashed border-stone-300 bg-lime-50/60 p-4 text-sm text-stone-500">
       {message}
     </div>
   );

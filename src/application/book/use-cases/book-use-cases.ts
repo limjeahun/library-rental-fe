@@ -12,6 +12,14 @@ export class RegisterBookUseCase {
   }
 }
 
+export class GetBooksUseCase {
+  constructor(private readonly repository: BookRepositoryPort) {}
+
+  execute(): Promise<Book[]> {
+    return this.repository.findAll();
+  }
+}
+
 export class GetBookUseCase {
   constructor(private readonly repository: BookRepositoryPort) {}
 

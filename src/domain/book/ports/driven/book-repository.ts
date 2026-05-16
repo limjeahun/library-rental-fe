@@ -16,6 +16,7 @@ export type RegisterBookCommand = {
 
 export interface BookRepositoryPort {
   register(command: RegisterBookCommand): Promise<Book>;
+  findAll(): Promise<Book[]>;
   findByNo(no: number): Promise<Book>;
   makeAvailable(no: number): Promise<Book>;
   makeUnavailable(no: number): Promise<Book>;

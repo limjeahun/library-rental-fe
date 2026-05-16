@@ -87,6 +87,6 @@ npm run build
 
 ## Notes
 
-- `book-service`와 `member-service`에는 전체 목록 조회 API가 없습니다.
-- 도서/회원 목록 화면은 mock이 아니라 Zustand + localStorage recent cache를 사용합니다.
+- `book-service`는 전체 도서 목록 조회 API를 사용하고, `member-service`에는 전체 목록 조회 API가 없습니다.
+- 회원 목록 화면은 mock이 아니라 Zustand + localStorage recent cache를 사용합니다.
 - `202 Accepted`는 최종 성공이 아니라 요청 접수입니다. Kafka 후속 처리는 관련 조회 API로 확인해야 합니다.

@@ -20,11 +20,16 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <aside className="fixed inset-y-0 left-0 hidden w-[220px] bg-slate-900 px-3 py-4 text-white lg:block">
-        <div className="mb-6 px-2">
-          <div className="text-base font-semibold">Library Rental</div>
-          <div className="text-xs text-slate-400">Circulation Desk</div>
+    <div className="min-h-screen bg-[#f6f9f4] text-stone-950">
+      <aside className="fixed inset-y-0 left-0 hidden w-[236px] border-r border-stone-200 bg-white px-3 py-4 lg:block">
+        <div className="mb-6 flex items-center gap-3 px-2">
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-emerald-800 text-white">
+            <BookOpen size={20} />
+          </div>
+          <div>
+            <div className="text-base font-semibold text-stone-950">Library Rental</div>
+            <div className="text-xs font-medium text-emerald-700">Circulation Desk</div>
+          </div>
         </div>
         <nav className="grid gap-1">
           {navItems.map((item) => {
@@ -37,8 +42,8 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition",
                   active
-                    ? "bg-white text-slate-950"
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white",
+                    ? "bg-emerald-800 text-white"
+                    : "text-stone-600 hover:bg-lime-50 hover:text-emerald-900",
                 )}
               >
                 <Icon size={17} />
@@ -48,17 +53,17 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </aside>
-      <div className="lg:pl-[220px]">
-        <header className="sticky top-0 z-20 flex h-12 items-center border-b border-slate-200 bg-white px-4 lg:px-6">
+      <div className="lg:pl-[236px]">
+        <header className="sticky top-0 z-20 flex min-h-14 items-center border-b border-stone-200 bg-white/95 px-4 lg:px-6">
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-slate-900">도서관 대여 운영 콘솔</div>
+              <div className="text-sm font-semibold text-stone-900">도서관 대여 운영 콘솔</div>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+            <div className="flex flex-wrap gap-2 text-xs text-stone-600">
               {serviceChips.map((service) => (
                 <span
                   key={service}
-                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-emerald-700"
+                  className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 font-medium text-emerald-700"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   {service}
@@ -67,7 +72,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="p-6">{children}</main>
+        <main className="p-4 md:p-6">{children}</main>
       </div>
     </div>
   );
